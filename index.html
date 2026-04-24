@@ -218,7 +218,45 @@
 <div id="root"></div>
 
 <script type="text/babel">
-const { useState, useMemo } = React;
+const { useState, useMemo, useEffect } = React;
+
+// ── Supabase connection ──────────────────────────────────────────────────────
+const SUPABASE_URL = "https://gnbfjtqtjrxngayqijhk.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImduYmZqdHF0anJ4bmdheXFpamhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMjEwODksImV4cCI6MjA5MjU5NzA4OX0.q3uUFBi2SEl_TiZnvnc3zjGIkkOuSb0OS4dLAM5nwW0";
+
+async function fetchLeaderboard() {
+  const url = `${SUPABASE_URL}/rest/v1/leaderboard_records?select=boss,player,cls,dps,dmg,duration,guild,submitted_at&order=dps.desc`;
+  const res = await fetch(url, {
+    headers: {
+      "apikey":        SUPABASE_KEY,
+      "Authorization": `Bearer ${SUPABASE_KEY}`,
+    }
+  });
+  if (!res.ok) throw new Error(`Supabase error: ${res.status}`);
+  const rows = await res.json();
+  // Group by boss, keep best DPS per player
+  const grouped = {};
+  for (const r of rows) {
+    if (!grouped[r.boss]) grouped[r.boss] = {};
+    const existing = grouped[r.boss][r.player];
+    if (!existing || r.dps > existing.dps) {
+      grouped[r.boss][r.player] = {
+        player: r.player,
+        cls:    r.cls || "",
+        dps:    parseFloat(r.dps) || 0,
+        dmg:    parseFloat(r.dmg) || 0,
+        date:   r.submitted_at ? r.submitted_at.slice(0,10) : "",
+        guild:  r.guild || "",
+      };
+    }
+  }
+  // Convert to sorted arrays
+  const result = {};
+  for (const boss of Object.keys(grouped)) {
+    result[boss] = Object.values(grouped[boss]).sort((a,b) => b.dps - a.dps);
+  }
+  return result;
+}
 
 const CLASSES = [
   { id: "ALL",             label: "ALL Classes",      css: "",              icon: null },
@@ -260,52 +298,10 @@ const BOSSES = [
   "T4 – Entity",
   "T3 – Slithering Chaos",
   "T3 – Avatar of Yig",
-];
-
-function randDps(min, max) { return Math.round((min + Math.random() * (max - min)) * 10) / 10; }
-function randDmg(dps, dur)  { return dps * dur * 1000; }
-function randDate() {
-  const d = new Date(2024 + Math.floor(Math.random()*2), Math.floor(Math.random()*12), 1 + Math.floor(Math.random()*28));
-  return d.toISOString().slice(0,10);
-}
-
-const GUILDS = ["Destiny","Fruit Vendors","Rakhana [Mitra (DE)]","Malarz Jajek Team","I-Spartans-I",
-  "Dead Kow Kult","The Ivory Tower","Rogue Angels","Black-Steel","zOne","Sons of Hatdualu",
-  "Dawnsong","Loot Goblins","Circle of Eternity","Underground Boys","Hug dealers"];
-
-const PLAYER_NAMES = [
-  "Vargotie","Karnavalos","Kernassi","Darmyter","Teaplease","Hatetowait","Arakkin","Begarmen",
-  "Sushi","Ghiaour","Khadrosa","Darmyrose","Nargonli","Henryii","Dagoth","Ziok","Sinhry",
-  "Synnove","Nehebkin","Zappydrosa","Aaslaugr","Raknoss","Robenz","Carronade","Piratess",
-  "Zartoxus","Radacoon","Honeypomm","Sikring","Fijndahl","Valirio","Animashot","Hotspicy",
-  "Nefax","Adolch","Indamix","Focosa","Kelatid","Wanderratte","Wofjr","Kirhu","Yttr",
-  "Praeustus","Greateye","Santaklays","Kolofotia","Xooyo","Potlatch","Kernasi","Typeone",
+  "T3 – Straw Man",
 ];
 
 const CLASS_LIST = CLASSES.filter(c => c.id !== "ALL").map(c => c.id);
-
-function buildData() {
-  const result = {};
-  BOSSES.forEach(boss => {
-    const entries = [];
-    const shuffled = [...PLAYER_NAMES].sort(() => Math.random() - 0.5);
-    const count = 30 + Math.floor(Math.random() * 20);
-    for (let i = 0; i < count; i++) {
-      const playerName = shuffled[i % shuffled.length] + (i >= shuffled.length ? Math.floor(Math.random()*99) : "");
-      const cls  = CLASS_LIST[Math.floor(Math.random() * CLASS_LIST.length)];
-      const dps  = randDps(8000, 22000);
-      const dmg  = randDmg(dps, 180 + Math.random()*120);
-      const date = randDate();
-      const guild = GUILDS[Math.floor(Math.random() * GUILDS.length)];
-      entries.push({ player: playerName, cls, dps, dmg, date, guild });
-    }
-    entries.sort((a, b) => b.dps - a.dps);
-    result[boss] = entries;
-  });
-  return result;
-}
-
-const DATA = buildData();
 
 function fmtDps(v)  { return v.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + " DPS"; }
 function fmtDmg(v)  {
@@ -326,17 +322,27 @@ function App() {
   const [selectedClass, setSelectedClass] = useState("ALL");
   const [selectedBoss,  setSelectedBoss]  = useState("");
   const [search,        setSearch]        = useState("");
+  const [allData,       setAllData]       = useState({});
+  const [loading,       setLoading]       = useState(true);
+  const [loadError,     setLoadError]     = useState(null);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchLeaderboard()
+      .then(data => { setAllData(data); setLoading(false); })
+      .catch(err  => { setLoadError(err.message); setLoading(false); });
+  }, []);
 
   const rows = useMemo(() => {
     if (!selectedBoss) return [];
-    let data = DATA[selectedBoss] || [];
+    let data = allData[selectedBoss] || [];
     if (selectedClass !== "ALL") data = data.filter(r => r.cls === selectedClass);
     if (search.trim()) {
       const q = search.toLowerCase();
       data = data.filter(r => r.player.toLowerCase().includes(q) || r.cls.toLowerCase().includes(q));
     }
     return data;
-  }, [selectedBoss, selectedClass, search]);
+  }, [selectedBoss, selectedClass, search, allData]);
 
   const showTable = selectedBoss !== "";
 
@@ -408,7 +414,17 @@ function App() {
           </div>
         </div>
 
-        {!showTable ? (
+        {loading ? (
+          <div className="empty-state">
+            <p>Loading data…</p>
+            <p>Connecting to the leaderboard database</p>
+          </div>
+        ) : loadError ? (
+          <div className="empty-state">
+            <p>Connection error</p>
+            <p style={{fontSize:"12px",color:"#e06060"}}>{loadError}</p>
+          </div>
+        ) : !showTable ? (
           <div className="empty-state">
             <p>Select a Boss to view rankings</p>
             <p>Choose a boss and optionally filter by class above</p>
