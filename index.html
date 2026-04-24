@@ -309,8 +309,34 @@ function fmtDmg(v)  {
   if (v >= 1_000)     return (v / 1_000).toFixed(1) + "K";
   return v.toFixed(0);
 }
-function classCSS(id) { return CLASSES.find(c => c.id === id)?.css || ""; }
-function classIcon(id) { return CLASSES.find(c => c.id === id)?.icon || null; }
+// Mapping codici brevi del parser (cls = "DT", "Necro", "PoM", ...) ai
+// nomi completi usati come id nell'array CLASSES sopra. Il parser Python
+// usa codici corti per compattezza nei log; qui li traduciamo per il
+// lookup di icone/CSS class. Case-insensitive.
+const CLASS_CODE_TO_ID = {
+  "pom":    "Priest of Mitra",
+  "necro":  "Necromancer",
+  "ranger": "Ranger",
+  "sin":    "Assassin",
+  "tos":    "Tempest of Set",
+  "hox":    "Herald of Xotli",
+  "guard":  "Guardian",
+  "dt":     "Dark Templar",
+  "demo":   "Demonologist",
+  "conq":   "Conqueror",
+  "bs":     "Bear Shaman",
+  "barb":   "Barbarian",
+};
+function _resolveClassId(id) {
+  if (!id) return id;
+  // Match diretto sul nome completo (caso vecchio / row legacy)
+  if (CLASSES.find(c => c.id === id)) return id;
+  // Match codice breve case-insensitive → nome completo
+  const mapped = CLASS_CODE_TO_ID[String(id).trim().toLowerCase()];
+  return mapped || id;
+}
+function classCSS(id)  { return CLASSES.find(c => c.id === _resolveClassId(id))?.css  || ""; }
+function classIcon(id) { return CLASSES.find(c => c.id === _resolveClassId(id))?.icon || null; }
 function medalEmoji(rank) {
   if (rank === 1) return "🥇";
   if (rank === 2) return "🥈";
