@@ -302,7 +302,9 @@ const BOSSES = [
   "T4 – Lu Zhi",
   "T4 – Keaira",
   "T4 – Entity",
-  "T3 – Slithering Chaos",
+  "T3.5 – Archfiend of Gore",
+  "T3.5 – Arch Lector Zaal",
+  "T3.5 – Bat of Nergal",
   "T3 – Avatar of Yig",
   "T3 – Straw Man",
 ];
@@ -426,8 +428,13 @@ function App() {
                   <option key={b} value={b}>{b.replace("T4 \u2013 ", "")}</option>
                 ))}
               </optgroup>
-              <optgroup label="─── Tier 3 ───">
-                {BOSSES.filter(b => b.startsWith("T3")).map(b => (
+              <optgroup label="─── Tier 3.5 ───">
+                {BOSSES.filter(b => b.startsWith("T3.5")).map(b => (
+                  <option key={b} value={b}>{b.replace("T3.5 \u2013 ", "")}</option>
+                ))}
+              </optgroup>
+              <optgroup label="─── Slithering Chaos ───">
+                {BOSSES.filter(b => b.startsWith("T3 ")).map(b => (
                   <option key={b} value={b}>{b.replace("T3 \u2013 ", "")}</option>
                 ))}
               </optgroup>
