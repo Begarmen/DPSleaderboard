@@ -234,13 +234,19 @@ async function fetchLeaderboard() {
   });
   if (!res.ok) throw new Error(`Supabase error: ${res.status}`);
   const rows = await res.json();
-  // Group by boss, keep best DPS per player
+  // Group by boss, keep best DPS per (player, class).
+  // Dedup-key = `${player}|${cls}` così lo stesso giocatore con classi
+  // diverse mantiene un PB indipendente per ogni classe (es. Begarmen DT
+  // e Begarmen Necro sullo stesso boss restano due righe separate). Se la
+  // chiave fosse solo r.player, la classe con DPS minore verrebbe
+  // nascosta dall'altra anche se è il PB di quella classe.
   const grouped = {};
   for (const r of rows) {
     if (!grouped[r.boss]) grouped[r.boss] = {};
-    const existing = grouped[r.boss][r.player];
+    const dedupKey = `${r.player}|${r.cls || ""}`;
+    const existing = grouped[r.boss][dedupKey];
     if (!existing || r.dps > existing.dps) {
-      grouped[r.boss][r.player] = {
+      grouped[r.boss][dedupKey] = {
         player: r.player,
         cls:    r.cls || "",
         dps:    parseFloat(r.dps) || 0,
@@ -362,7 +368,13 @@ function App() {
   const rows = useMemo(() => {
     if (!selectedBoss) return [];
     let data = allData[selectedBoss] || [];
-    if (selectedClass !== "ALL") data = data.filter(r => r.cls === selectedClass);
+    if (selectedClass !== "ALL") {
+      // selectedClass arriva dal dropdown con i full-name di CLASSES (es. "Dark Templar"),
+      // ma sul DB r.cls e' un codice breve (es. "DT"). Normalizzo entrambi tramite
+      // _resolveClassId in modo che "DT" ("dt") -> "Dark Templar" e poi il confronto
+      // matcha. Funziona anche se in futuro il parser inviasse direttamente i full-name.
+      data = data.filter(r => _resolveClassId(r.cls) === _resolveClassId(selectedClass));
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       data = data.filter(r => r.player.toLowerCase().includes(q) || r.cls.toLowerCase().includes(q));
