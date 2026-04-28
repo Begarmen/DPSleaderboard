@@ -293,9 +293,9 @@ const BOSSES = [
   "T5 – Kyllikki",
   "T4 – General Sheng",
   "T4 – Obsidian Basilisk",
-  "T4 – The Imp",
+  "T4 – Imp",
   "T4 – Zodiac",
-  "T4 – Emperor",
+  "T4 – Yah Chieng",
   "T4 – Saddur",
   "T4 – Strom",
   "T4 – Mithrelle",
@@ -307,6 +307,18 @@ const BOSSES = [
   "T3.5 – Bat of Nergal",
   "T3 – Avatar of Yig",
   "T3 – Straw Man",
+  "Monastery – Heiromonk Zhu-La",
+  "Monastery – Air and Water",
+  "Monastery – Balbet-Zhun",
+  "Vile Nativity – Overseer Olik",
+  "Vile Nativity – The Little Prince",
+  "Vile Nativity – Argo-Satha",
+  "Vile Nativity – Idol of Silence",
+  "Vile Nativity – Queen Cao-Polyphya",
+  "Sepulcher of the Wyrm – Jarl-Kosh the Lotus-Haunted",
+  "Sepulcher of the Wyrm – Osseous Abomination",
+  "Sepulcher of the Wyrm – Supernal Custodian of Yoth",
+  "Palace – Warlord Yun Rau",
 ];
 
 const CLASS_LIST = CLASSES.filter(c => c.id !== "ALL").map(c => c.id);
@@ -436,6 +448,26 @@ function App() {
               <optgroup label="─── Slithering Chaos ───">
                 {BOSSES.filter(b => b.startsWith("T3 ")).map(b => (
                   <option key={b} value={b}>{b.replace("T3 \u2013 ", "")}</option>
+                ))}
+              </optgroup>
+              <optgroup label="─── Monastery ───">
+                {BOSSES.filter(b => b.startsWith("Monastery")).map(b => (
+                  <option key={b} value={b}>{b.replace("Monastery \u2013 ", "")}</option>
+                ))}
+              </optgroup>
+              <optgroup label="─── Vile Nativity ───">
+                {BOSSES.filter(b => b.startsWith("Vile Nativity")).map(b => (
+                  <option key={b} value={b}>{b.replace("Vile Nativity \u2013 ", "")}</option>
+                ))}
+              </optgroup>
+              <optgroup label="─── Sepulcher of the Wyrm ───">
+                {BOSSES.filter(b => b.startsWith("Sepulcher of the Wyrm")).map(b => (
+                  <option key={b} value={b}>{b.replace("Sepulcher of the Wyrm \u2013 ", "")}</option>
+                ))}
+              </optgroup>
+              <optgroup label="─── Palace ───">
+                {BOSSES.filter(b => b.startsWith("Palace")).map(b => (
+                  <option key={b} value={b}>{b.replace("Palace \u2013 ", "")}</option>
                 ))}
               </optgroup>
             </select>
