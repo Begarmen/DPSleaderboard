@@ -148,12 +148,14 @@
 
     /* ── FILTERS ── */
     .filters-bar {
-      display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-end;
-      padding: 32px 0 28px;
+      display: flex; flex-wrap: nowrap; gap: 12px; align-items: flex-end;
+      padding: 28px 0 24px;
       border-bottom: 1px solid var(--border);
       margin-bottom: 32px;
+      overflow: visible;
+      position: relative; z-index: 10;
     }
-    .filter-group { display: flex; flex-direction: column; gap: 7px; }
+    .filter-group { display: flex; flex-direction: column; gap: 7px; position: relative; }
     .filter-label { font-family: 'Crom', 'Cinzel', serif !important;
       font-size: 16px;
       color: var(--gold-light) !important;
@@ -443,7 +445,7 @@
     .cls-herald      { color: #d070d8; }
 
     /* ── CUSTOM DROPDOWN ── */
-    .cd-wrap { position: relative; min-width: 380px; }
+    .cd-wrap { position: relative; min-width: 220px; }
     .cd-trigger {
       display: flex; align-items: center; justify-content: space-between;
       background: var(--bg-card); border: 1px solid var(--border);
@@ -457,12 +459,12 @@
     .cd-arrow { color: var(--gold); font-size: 10px; flex-shrink: 0; transition: transform 0.2s; }
     .cd-trigger.open .cd-arrow { transform: rotate(180deg); }
     .cd-menu {
-      position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 999;
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 9999;
       background: #110e07; border: 1px solid var(--border-bright);
-      border-radius: 2px; max-height: 680px; overflow-y: auto;
+      border-radius: 2px; max-height: 480px; overflow-y: auto;
       box-shadow: 0 8px 32px rgba(0,0,0,0.8);
       animation: ddIn 0.15s ease;
-      min-width: 400px;
+      min-width: 240px;
     }
     @keyframes ddIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
     .cd-group-label {
@@ -632,11 +634,15 @@ const BOSSES = [
   "T5 – Yakhmar","T5 – Vistrix","T5 – Champion of the Honorguard","T5 – Kyllikki",
   "T4 – General Sheng","T4 – Obsidian Basilisk","T4 – Imp","T4 – Zodiac","T4 – Yah Chieng","T4 – Saddur","T4 – Strom","T4 – Mithrelle","T4 – Lu Zhi","T4 – Keaira","T4 – Entity",
   "T3.5 – Archfiend of Gore","T3.5 – Arch Lector Zaal","T3.5 – Bat of Nergal",
-  "T3 – Avatar of Yig","T3 – Straw Man",
+  "T3 – Avatar of Yig",
   "Monastery – Heiromonk Zhu-La","Monastery – Air and Water","Monastery – Balbet-Zhun",
   "Vile Nativity – Overseer Olik","Vile Nativity – The Little Prince","Vile Nativity – Argo-Satha","Vile Nativity – Idol of Silence","Vile Nativity – Queen Cao-Polyphya",
   "Sepulcher of the Wyrm – Jarl-Kosh the Lotus-Haunted","Sepulcher of the Wyrm – Osseous Abomination","Sepulcher of the Wyrm – Supernal Custodian of Yoth",
   "Palace – Warlord Yun Rau",
+  "Ardashir Fort – Commander Kamangir","Ardashir Fort – General Arman","Ardashir Fort – Sodabeh",
+  "Abyss of Kun Whu – Kun Whu",
+  "Den of the Crowmen – Royal Hatchling",
+
 ];
 
 const CLASS_CODE_TO_ID = {
@@ -792,6 +798,7 @@ function CustomDropdown({ value, onChange, placeholder, groups, flat }) {
 function App() {
   const [selectedClass, setSelectedClass] = useState("ALL");
   const [selectedBoss,  setSelectedBoss]  = useState("");
+  const [selectedDungeonBoss, setSelectedDungeonBoss] = useState("");
   const [search,        setSearch]        = useState("");
   const [allData,       setAllData]       = useState({});
   const [loading,       setLoading]       = useState(true);
@@ -830,8 +837,9 @@ function App() {
   }, [selectedBoss, selectedClass, search]);
 
   const rows = useMemo(() => {
-    if (!selectedBoss) return [];
-    let data = allData[selectedBoss] || [];
+    const activeBoss = selectedBoss || selectedDungeonBoss;
+    if (!activeBoss) return [];
+    let data = allData[activeBoss] || [];
     if (selectedClass !== "ALL") {
       data = data.filter(r => resolveClassId(r.cls) === resolveClassId(selectedClass));
     }
@@ -850,10 +858,12 @@ function App() {
       return 0;
     });
     return data;
-  }, [selectedBoss, selectedClass, search, allData, sortCol, sortDir]);
+  }, [selectedBoss, selectedDungeonBoss, selectedClass, search, allData, sortCol, sortDir]);
+
+  const activeBoss = selectedBoss || selectedDungeonBoss;
 
   const maxDps = useMemo(() => rows.length > 0 ? rows[0].dps : 1, [rows]);
-  const showTable = selectedBoss !== "" && !loading && !loadError;
+  const showTable = (selectedBoss !== "" || selectedDungeonBoss !== "") && !loading && !loadError;
   const top3 = rows.slice(0, Math.min(3, rows.length));
   const restRows = rows.slice(rows.length <= 3 ? rows.length : 3);
 
@@ -882,16 +892,22 @@ function App() {
     );
   }
 
-  const bossTiers = [
-    { label: "Tier 6", prefix: "T6", strip: "T6 \u2013 " },
-    { label: "Tier 5", prefix: "T5", strip: "T5 \u2013 " },
-    { label: "Tier 4", prefix: "T4", strip: "T4 \u2013 " },
-    { label: "Tier 3.5", prefix: "T3.5", strip: "T3.5 \u2013 " },
-    { label: "Slithering Chaos", prefix: "T3 ", strip: "T3 \u2013 " },
-    { label: "Monastery", prefix: "Monastery", strip: "Monastery \u2013 " },
-    { label: "Vile Nativity", prefix: "Vile Nativity", strip: "Vile Nativity \u2013 " },
-    { label: "Sepulcher of the Wyrm", prefix: "Sepulcher of the Wyrm", strip: "Sepulcher of the Wyrm \u2013 " },
-    { label: "Palace", prefix: "Palace", strip: "Palace \u2013 " },
+  const raidTiers = [
+    { label: "Tier 6", prefix: "T6", strip: "T6 – " },
+    { label: "Tier 5", prefix: "T5", strip: "T5 – " },
+    { label: "Tier 4", prefix: "T4", strip: "T4 – " },
+    { label: "Tier 3.5", prefix: "T3.5", strip: "T3.5 – " },
+  ];
+  const dungeonTiers = [
+    { label: "Slithering Chaos", prefix: "T3 ", strip: "T3 – " },
+    { label: "Test", options: [{ value: "T3 – Straw Man", label: "Straw Man" }] },
+    { label: "Monastery", prefix: "Monastery", strip: "Monastery – " },
+    { label: "Vile Nativity", prefix: "Vile Nativity", strip: "Vile Nativity – " },
+    { label: "Sepulcher of the Wyrm", prefix: "Sepulcher of the Wyrm", strip: "Sepulcher of the Wyrm – " },
+    { label: "Palace", prefix: "Palace", strip: "Palace – " },
+    { label: "Ardashir Fort", prefix: "Ardashir Fort", strip: "Ardashir Fort – " },
+    { label: "Abyss of Kun Whu", prefix: "Abyss of Kun Whu", strip: "Abyss of Kun Whu – " },
+    { label: "Den of the Crowmen", prefix: "Den of the Crowmen", strip: "Den of the Crowmen – " },
   ];
 
   return (
@@ -926,16 +942,30 @@ function App() {
         {/* FILTERS */}
         <div className="filters-bar">
           <div className="filter-group">
-            <span className="filter-label">Boss</span>
+            <span className="filter-label">Raid Boss</span>
             <CustomDropdown
               value={selectedBoss}
-              onChange={setSelectedBoss}
-              placeholder="— Select a Boss —"
-              groups={bossTiers.map(tier => ({
+              onChange={v => { setSelectedBoss(v); if(v) setSelectedDungeonBoss(""); }}
+              placeholder="— Raid Boss —"
+              groups={raidTiers.map(tier => ({
                 label: tier.label,
                 options: BOSSES.filter(b => b.startsWith(tier.prefix)).map(b => ({
-                  value: b,
-                  label: b.replace(tier.strip, "")
+                  value: b, label: b.replace(tier.strip, "")
+                }))
+              }))}
+            />
+          </div>
+
+          <div className="filter-group">
+            <span className="filter-label">Dungeon Boss</span>
+            <CustomDropdown
+              value={selectedDungeonBoss}
+              onChange={v => { setSelectedDungeonBoss(v); if(v) setSelectedBoss(""); }}
+              placeholder="— Dungeon Boss —"
+              groups={dungeonTiers.map(tier => ({
+                label: tier.label,
+                options: tier.options || BOSSES.filter(b => b.startsWith(tier.prefix)).map(b => ({
+                  value: b, label: b.replace(tier.strip, "")
                 }))
               }))}
             />
@@ -993,7 +1023,7 @@ function App() {
               <div className="status-info">
                 <div className="status-dot"></div>
                 <span className="status-text">
-                  {selectedBoss.replace(/^T\d+\.?\d*\s*[–-]\s*/, "").replace(/^[A-Za-z\s]+\s*[–-]\s*/, "")}
+                  {activeBoss.replace(/^T\d+\.?\d*\s*[–-]\s*/, "").replace(/^[\w\s]+\s*[–-]\s*/, "")}
                   {selectedClass !== "ALL" ? ` · ${selectedClass}` : ""}
                 </span>
               </div>
